@@ -1,0 +1,22 @@
+{
+  "cloud": {
+    "email": "deine@email.de",
+    "pwd": "DeinKressPasswort",
+    "type": "kress"
+  },
+  "mqtt": {
+    "url": "mqtt://mosquitto",
+    "options": {
+      "username": "",
+      "password": "",
+      "port": 1883
+    }
+  },
+  "mower": [
+    {
+      "sn": "SERIENNUMMER_DEINES_KR121E",
+      "topic": "kress"
+    }
+  ],
+  "logLevel": "info"
+}
