@@ -11,7 +11,7 @@ RUN npm install --omit=dev
 COPY bridge.js ./
 COPY logger.js ./
 
-# Config is mounted via volume at runtime
-# /app/config.json → bind-mounted from ./config/config.json
+# config.json is mounted via volume at runtime:
+#   ./config.json → /app/config.json
 
 CMD ["node", "bridge.js"]

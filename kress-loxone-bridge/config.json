@@ -5,11 +5,10 @@
     "type": "kress"
   },
   "mqtt": {
-    "url": "mqtt://mosquitto",
+    "url": "mqtt://localhost:1883",
     "options": {
       "username": "",
-      "password": "",
-      "port": 1883
+      "password": ""
     }
   },
   "mower": [
