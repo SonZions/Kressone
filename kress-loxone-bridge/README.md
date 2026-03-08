@@ -1,10 +1,10 @@
 # Kress ↔ Loxone MQTT Bridge
 
 Verbindet einen Kress Mähroboter (z.B. KR121E) über die Kress Cloud mit einem lokalen
-Mosquitto MQTT-Broker, den Loxone direkt ansprechen kann.
+MQTT-Broker, den Loxone direkt ansprechen kann.
 
 Basiert auf dem originalen [mqtt-landroid-bridge](https://github.com/nefiertsrebliS/mqtt-landroid-bridge)
-(MIT-Lizenz), neu geschrieben für Loxone und Docker.
+(MIT-Lizenz), neu geschrieben für Loxone.
 
 ---
 
@@ -16,20 +16,22 @@ Kress KR121E
      ▼
 Kress Cloud MQTT (AWS)
      │
- [kress-bridge Container]
+ [kress-bridge]
      │  (lokales Netzwerk)
      ▼
-Mosquitto Container  ←──────── Loxone Miniserver
-  Port 1883                    (MQTT Client)
+Mosquitto auf dem Pi  ←──────── Loxone Miniserver
+  Port 1883                     (MQTT Client)
 ```
+
+Die Bridge läuft direkt auf deinem Raspberry Pi – entweder nativ oder als Docker-Container.
+Der Mosquitto-Broker läuft **separat** auf dem Pi (nicht als Teil dieses Projekts).
 
 ---
 
 ## Voraussetzungen
 
-- Raspberry Pi mit Docker & Docker Compose
+- Raspberry Pi mit laufendem Mosquitto MQTT-Broker (Port 1883)
 - Kress App-Zugangsdaten (E-Mail + Passwort)
-- Seriennummer des KR121E (steht auf dem Gerät oder im Debug-Log)
 - Loxone Miniserver mit aktiviertem MQTT-Client
 
 ---
@@ -46,7 +48,7 @@ cd kress-loxone-bridge
 ### 2. config.json anpassen
 
 ```bash
-nano config/config.json
+nano config.json
 ```
 
 Folgende Werte eintragen:
@@ -55,31 +57,85 @@ Folgende Werte eintragen:
 |------|-------------|
 | `cloud.email` | E-Mail der Kress App |
 | `cloud.pwd` | Passwort der Kress App |
-| `mower[0].sn` | Seriennummer des Mähers |
+| `mqtt.url` | URL deines lokalen MQTT-Brokers (siehe unten) |
 | `mower[0].topic` | MQTT-Topic-Prefix (Standard: `kress`) |
+| `logLevel` | `debug` zum Einrichten, danach `info` |
 
-Die Seriennummer beim ersten Start mit `"logLevel": "debug"` herausfinden – sie erscheint im Log.
+### Wie lautet die mqtt.url?
 
-### 3. Starten
+Das hängt davon ab, wie du die Bridge startest:
+
+**Option A – Docker mit `network_mode: host` (Standard in docker-compose.yml)**
+
+```json
+"url": "mqtt://localhost:1883"
+```
+
+Mit `network_mode: host` sieht der Container das Netzwerk des Pi direkt.
+`localhost` zeigt also auf den Pi selbst – und damit auf deinen Mosquitto.
+
+**Option B – Nativ auf dem Pi (ohne Docker)**
+
+```json
+"url": "mqtt://localhost:1883"
+```
+
+Gleiche Adresse, da die Bridge direkt auf dem Pi läuft.
+
+**Option C – Docker ohne `network_mode: host`**
+
+```json
+"url": "mqtt://192.168.1.42:1883"
+```
+
+Hier musst du die feste IP des Pi eintragen. IP herausfinden:
+
+```bash
+hostname -I
+# Ausgabe z.B.: 192.168.1.42
+```
+
+> **Tipp:** Die Seriennummer deines Mähers brauchst du **nicht** einzutragen –
+> sie wird automatisch über die Cloud-API ermittelt. Das Feld `mower[0].sn` ist
+> nur zur Dokumentation. Beim ersten Start mit `"logLevel": "debug"` siehst du
+> alle erkannten Geräte im Log.
+
+---
+
+### 3. Starten (Docker)
 
 ```bash
 docker compose up -d
 ```
 
-### 4. Logs prüfen
+### 4. Starten (nativ, ohne Docker)
 
 ```bash
+npm install
+node bridge.js
+```
+
+### 5. Logs prüfen
+
+```bash
+# Docker
 docker compose logs -f kress-bridge
+
+# Nativ
+# Läuft direkt im Terminal
 ```
 
 ---
 
 ## MQTT Topics
 
+Der Topic-Prefix `kress` ist in `config.json` unter `mower[0].topic` konfigurierbar.
+
 ### Status (Loxone liest → retained)
 
 | Topic | Typ | Beschreibung |
 |-------|-----|-------------|
+| `kress/status/online` | 0/1 | Bridge verbunden (wird bei Absturz automatisch auf 0 gesetzt) |
 | `kress/status/battery` | 0–100 | Akkustand in % |
 | `kress/status/battery_charging` | 0/1 | Lädt gerade |
 | `kress/status/battery_voltage` | float | Spannung in V |
@@ -91,9 +147,10 @@ docker compose logs -f kress-bridge
 | `kress/status/error` | string | Fehlertext (z.B. `none`, `lifted`) |
 | `kress/status/error_code` | int | Numerischer Fehlercode |
 | `kress/status/wifi_rssi` | int | WLAN-Signalstärke (dBm) |
-| `kress/status/online` | 0/1 | Bridge verbunden |
 | `kress/status/total_time` | int | Gesamte Mähzeit (min) |
 | `kress/status/total_distance` | int | Gesamtstrecke (m) |
+| `kress/status/total_blades` | int | Messernutzung gesamt |
+| `kress/status/blade_time` | int | Verbleibende Messerzeit |
 
 ### Befehle (Loxone sendet)
 
@@ -112,7 +169,9 @@ docker compose logs -f kress-bridge
 1. Loxone Config öffnen
 2. Miniserver → Eigenschaften → Netzwerk
 3. **MQTT-Client** aktivieren
-4. Broker-Adresse: IP des Raspberry Pi, Port 1883
+4. Broker-Adresse: IP des Raspberry Pi, Port `1883`
+
+> Die IP des Pi findest du mit `hostname -I` auf dem Pi.
 
 ### Virtuelle Eingänge (Status lesen)
 
@@ -138,10 +197,16 @@ Einen **Virtuellen Ausgang** pro Befehl:
 |------|-----------|
 | 0 | Idle |
 | 1 | In Basisstation |
+| 2 | Startsequenz |
+| 3 | Verlässt Basis |
+| 5 | Sucht Draht |
 | 7 | Mäht |
 | 8 | Angehoben |
+| 9 | Blockiert |
+| 10 | Messer blockiert |
 | 30 | Fährt zur Basis |
-| 5 | Regenverzögerung |
+| 32 | Kantenschnitt |
+| 34 | Sucht Zone |
 
 ---
 
