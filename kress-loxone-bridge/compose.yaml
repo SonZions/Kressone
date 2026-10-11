@@ -1,0 +1,35 @@
+services:
+  kress-bridge:
+    image: ${KRESS_IMAGE:-kressone:local}
+    build:
+      context: .
+      target: production
+    container_name: kress-bridge
+    restart: unless-stopped
+    init: true
+    env_file:
+      - ${KRESS_ENV_FILE:-/etc/kress/secrets/runtime.env}
+    environment:
+      TZ: Europe/Berlin
+      STATE_DIR: /state
+    volumes:
+      - ${KRESS_STATE_DIR:-/opt/kress/state}:/state
+    # Existing VPS firewall blocks container-to-container traffic on docker0.
+    # Host networking uses the existing VPN-bound broker; this app opens no ports.
+    network_mode: host
+    read_only: true
+    tmpfs:
+      - /tmp:size=8m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 160m
+    cpus: 0.5
+    pids_limit: 80
+    stop_grace_period: 35s
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '3'

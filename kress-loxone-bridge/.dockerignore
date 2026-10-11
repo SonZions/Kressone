@@ -1,0 +1,12 @@
+*
+!package.json
+!package-lock.json
+!bridge.js
+!logger.js
+!healthcheck.js
+!diagnose.js
+!lib/
+!lib/**
+!test/
+!test/**
+!eslint.config.js
