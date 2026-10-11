@@ -110,6 +110,12 @@ Die unmittelbare Statusabfrage nach SIGHUP fiel noch in das 60-Sekunden-Limit un
 wurde unterdrückt. Der Verbindungsneuaufbau war erfolgreich; der spätere separate
 Neustart-/Refresh-Test lieferte wieder eine neue MQTT-Meldung (23:31:26 MESZ, 18,97 V).
 
-Produktive Bewegungsbefehle bleiben zunächst deaktiviert; Status und cmd/refresh
-sind produktiv. Ihre dauerhafte Aktivierung benötigt die gesondert angefragte
-Freigabe. Einstufung bis dahin: PARTIALLY WORKING (Statusdatenfluss produktiv).
+Die dauerhafte Annahme von Start, Stopp und Heimfahrt wurde vom Nutzer ausdrücklich
+freigegeben und über ENABLE_COMMANDS=true aktiviert. Der anschließende Live-Test
+verwendet ausschließlich cmd/refresh. Physische Bewegungsbefehle bleiben live
+ungetestet. Einstufung: PRODUCTION READY für den geprüften Cloud-MQTT-Datenfluss;
+Befehlsvalidierung und Weiterleitung implementiert und mit Mocks geprüft.
+
+Produktives Image: kressone:2.0.0-1e8c22d. Code-Commit:
+1e8c22d7894d6ffa871cb4869cb05809f612b5d6. Spätere Berichtsänderungen ändern das
+getestete Anwendungsimage nicht.
