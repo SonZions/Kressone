@@ -68,8 +68,9 @@ Status-only-Modus, Authentifizierungssperre und Shutdown ab.
 ESLint besteht. Produktionsabhängigkeiten: keine bekannten Audit-Funde zum Testzeitpunkt.
 Gitleaks hat im vorgesehenen Checkout keine Secrets gefunden.
 
-GitHub Actions prüfen Installation, ESLint, Unit-Tests, npm audit, Secrets und
-AMD64/ARM64-Builds. Kein automatisches Deployment. Die VPS-Installation wurde
+GitHub Actions sind für Installation, ESLint, Unit-Tests, npm audit, Secrets und
+AMD64/ARM64-Builds konfiguriert, wurden aber noch nicht auf GitHub ausgeführt.
+Kein automatisches Deployment. Die VPS-Installation wurde
 auf AMD64 getestet; ARM64-Laufzeitbetrieb wurde nicht auf Hardware getestet.
 
 ## Betrieb
@@ -119,3 +120,13 @@ Befehlsvalidierung und Weiterleitung implementiert und mit Mocks geprüft.
 Produktives Image: kressone:2.0.0-1e8c22d. Code-Commit:
 1e8c22d7894d6ffa871cb4869cb05809f612b5d6. Spätere Berichtsänderungen ändern das
 getestete Anwendungsimage nicht.
+
+## Noch offener Repository-Upload
+
+Der lokale Branch `fix/kress-cloud-bridge` enthält den getesteten Code. Der Upload
+ist noch nicht erfolgt: HTTPS hat keine gespeicherten SonZions-Zugangsdaten,
+der vorhandene SSH-Zugang gehört zu `simon-dudanski_Melitta` und GitHub verweigert
+ihm Schreibzugriff auf `SonZions/Kressone`. Der verbundene GitHub-Connector bietet
+keine ausdrücklichen Autor-/Committer-Felder für Commit-Erstellung und kann daher
+die verbindliche E-Mail-Vorgabe nicht erfüllen. Pull Request und GitHub-CI stehen
+bis zum eingerichteten Git-Schreibzugang aus. Der VPS-Betrieb ist davon unabhängig.
