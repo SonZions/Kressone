@@ -121,12 +121,10 @@ Produktives Image: kressone:2.0.0-1e8c22d. Code-Commit:
 1e8c22d7894d6ffa871cb4869cb05809f612b5d6. Spätere Berichtsänderungen ändern das
 getestete Anwendungsimage nicht.
 
-## Noch offener Repository-Upload
+## Repository-Upload
 
-Der lokale Branch `fix/kress-cloud-bridge` enthält den getesteten Code. Der Upload
-ist noch nicht erfolgt: HTTPS hat keine gespeicherten SonZions-Zugangsdaten,
-der vorhandene SSH-Zugang gehört zu `simon-dudanski_Melitta` und GitHub verweigert
-ihm Schreibzugriff auf `SonZions/Kressone`. Der verbundene GitHub-Connector bietet
-keine ausdrücklichen Autor-/Committer-Felder für Commit-Erstellung und kann daher
-die verbindliche E-Mail-Vorgabe nicht erfüllen. Pull Request und GitHub-CI stehen
-bis zum eingerichteten Git-Schreibzugang aus. Der VPS-Betrieb ist davon unabhängig.
+Der Branch `fix/kress-cloud-bridge` wurde am 12.10.2026 über den vorhandenen
+SonZions-SSH-Zugang des Pi nach GitHub hochgeladen. Der private Schlüssel blieb
+auf dem Pi. Autor- und Committer-Adresse der neuen Commits sind `simon@dudanski`.
+GitHub-CI-Ergebnisse sind im Pull Request einsehbar; die oben genannten lokalen
+und VPS-Prüfungen sind unabhängig davon abgeschlossen.
