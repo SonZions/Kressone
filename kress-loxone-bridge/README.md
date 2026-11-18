@@ -273,3 +273,22 @@ Weekly schedule editing is deliberately not exposed: the requested display and
 pause/resume preserve all existing slots. Actual mower writes and maintenance
 reset were tested with mocks; no physical live command was sent during the
 November upgrade because the mower had no fresh telemetry.
+
+
+### Native Loxone MQTT subscription budget and heartbeat
+
+`kress/status/loxone_snapshot` is a non-retained numeric JSON snapshot emitted on
+every 10-second heartbeat. Its `heartbeat` is Unix seconds and changes even when
+all mower values are unchanged. Feed that changing value to the Loxone watchdog;
+repeated identical `1` values are not a reliable change-triggered watchdog input.
+Fields: heartbeat, bridge, cloud, mower, summary, battery, temperature, party,
+features_fresh, schedule_fresh, blade_hours, blade_initialized, pending, failed,
+alert. Unknown or stale measurement values are -1. A fresh `bridge_online` LWT 0
+must still override the last snapshot immediately.
+
+Use one snapshot subscription with native command recognition for numeric fields,
+plus individual subscriptions for bridge_online, schedule_text, command_text and
+alert_text. This uses five subscriptions and fits the native MQTT plugin's
+[16-subscription limit](https://www.loxone.com/enen/kb/mqtt/). `command_text` is a
+human-readable German summary; the existing command_result JSON remains available
+for detailed diagnostics. No home configuration or credentials are in this repo.

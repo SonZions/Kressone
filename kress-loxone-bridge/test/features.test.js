@@ -118,3 +118,11 @@ test('send failure never retries and explicit concurrent commands cannot overlap
  b.feedback.pending=null;b.io.publish=async(c,topic,...args)=>{if(topic==='cloud/in')throw new Error('socket closed');return publish(c,topic,...args);};
  await assert.rejects(b.send('party_off'));assert.equal(b.feedback.result.state,'failed');assert.equal(b.sending,false);
 });
+test('Loxone snapshot changes its heartbeat for idle mowers and marks stale values unknown',async t=>{
+ const {b,sent}=await runtime(t);await b.status({dat:{ls:1,le:0,bt:{p:100,t:15},st:{b:123}},cfg:{sc:{m:2,distm:0,d:days}}});
+ const now=Date.now(),a=b.loxoneSnapshot(1,1,2,'none',now),next=b.loxoneSnapshot(1,1,2,'none',now+10000);
+ assert.equal(next.heartbeat-a.heartbeat,10);assert.equal(a.battery,100);assert.equal(a.party,1);assert.equal(a.blade_hours,-1);
+ const stale=b.loxoneSnapshot(1,0,90,'stale_data',now);assert.equal(stale.battery,-1);assert.equal(stale.party,-1);assert.equal(stale.alert,1);
+ assert.equal(sent.findLast(x=>x.topic.endsWith('/loxone_snapshot')).retain,false);
+ await b.result({name:'party_on',state:'confirmed',at:now});assert.equal(sent.findLast(x=>x.topic.endsWith('/command_text')).value,'Party an: Zustand bestätigt');
+});

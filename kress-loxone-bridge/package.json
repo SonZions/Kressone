@@ -1,6 +1,6 @@
 {
   "name": "kress-loxone-bridge",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "MQTT bridge connecting Kress robotic mowers to Loxone via a local MQTT broker",
   "main": "bridge.js",
   "scripts": {

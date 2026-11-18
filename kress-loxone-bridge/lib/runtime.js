@@ -9,7 +9,7 @@ const {Commands,commandPayload}=require('./commands');
 const {Feedback,partyTarget}=require('./features');
 const {Maintenance}=require('./maintenance');
 const logFactory=require('../logger');
-const featureKeys=['party_mode','schedule_mode','schedule_enabled','schedule_paused','party_remaining_minutes','schedule','schedule_text','schedule_updated_at','features_updated_at','blade_counter_initialized','blade_since_change_minutes','blade_since_change_hours','blade_changed_at','command_result'];
+const featureKeys=['party_mode','schedule_mode','schedule_enabled','schedule_paused','party_remaining_minutes','schedule','schedule_text','schedule_updated_at','features_updated_at','blade_counter_initialized','blade_since_change_minutes','blade_since_change_hours','blade_changed_at','command_result','command_text'];
 const statusKeys=['battery','battery_charging','battery_voltage','battery_temp','status','status_code','mowing','at_home','error','error_code','total_time','total_distance','blade_time','total_blades','wifi_rssi','last_update','source'];
 class Bridge {
   constructor(config,deps={}) {
@@ -42,6 +42,9 @@ class Bridge {
     this.lastResult=value;
     if(!this.local?.connected)return;
     await this.io.publish(this.local,this.topic('command_result'),JSON.stringify(value));
+    const names={start:'Start',stop:'Pause',home:'Heimfahrt',refresh:'Statusabfrage',party_on:'Party an',party_off:'Party aus',schedule_pause:'Zeitplan pausieren',schedule_resume:'Zeitplan fortsetzen',blade_reset:'Messerwechsel'};
+    const states={unknown:'Noch kein Befehl',sent:'Gesendet',acknowledged:'Empfangen',confirmed:'Zustand bestätigt',timeout:'Keine Bestätigung',failed:'Fehlgeschlagen',rejected:'Abgelehnt',local_completed:'Gespeichert'};
+    await this.io.publish(this.local,this.topic('command_text'),`${names[value.name]||'Bridge'}: ${states[value.state]||'Unbekannt'}`);
     if(event)await this.io.publish(this.local,`${this.config.prefix}/event/command`,JSON.stringify(value),false);
   }
   async values(values) {
@@ -59,11 +62,22 @@ class Bridge {
     const summary=alarmStates[code]??(states[this.latest?.values.status]??99);
     await this.values({alert_code:code,alert_text:descriptions[code],summary_code:summary,telemetry_age_seconds:this.lastUpdate?Math.floor((now-this.lastUpdate)/1000):-1,party_supported:Number(Boolean(this.schedule))});
     await Promise.all(Object.entries({alert_active:Number(code!=='none'),data_stale:stale,command_pending:Number(Boolean(this.feedback.pending)),command_failed:Number(this.feedback.failed),features_fresh:Number(Boolean(mower&&this.featureAt&&now-this.featureAt<this.config.ttl)),schedule_fresh:Number(Boolean(mower&&this.scheduleAt&&now-this.scheduleAt<this.config.ttl))}).map(([k,v])=>this.io.publish(this.local,this.topic(k),v,false)));
+    await this.io.publish(this.local,this.topic('loxone_snapshot'),JSON.stringify(this.loxoneSnapshot(cloud,mower,summary,code,now)),false);
     if(key!==this.alertKey) {
       this.alertKey=key;
       await this.values({alert_changed_at:new Date(now).toISOString()});
       await this.io.publish(this.local,`${this.config.prefix}/event/alert`,JSON.stringify({code,active:code!=='none',text:descriptions[code],at:new Date(now).toISOString()}),false);
     }
+  }
+  loxoneSnapshot(cloud,mower,summary,alert,now=Date.now()) {
+    const v=this.latest?.values||{};
+    const field=(name,fresh=mower)=>fresh&&typeof v[name]==='number'&&Number.isFinite(v[name])?v[name]:-1;
+    const features=Boolean(mower&&this.featureAt&&now-this.featureAt<this.config.ttl);
+    const schedule=Boolean(mower&&this.scheduleAt&&now-this.scheduleAt<this.config.ttl);
+    return {heartbeat:Math.floor(now/1000),bridge:Number(!this.stopped),cloud:Number(cloud),mower:Number(mower),summary,
+      battery:field('battery'),temperature:field('battery_temp'),party:field('party_mode',features),features_fresh:Number(features),schedule_fresh:Number(schedule),
+      blade_hours:field('blade_since_change_hours',mower&&v.blade_counter_initialized===1&&now-this.bladeAt<this.config.ttl),
+      blade_initialized:Number(v.blade_counter_initialized===1),pending:Number(Boolean(this.feedback.pending)),failed:Number(this.feedback.failed),alert:Number(alert!=='none')};
   }
   async availability() {
     if(!this.local?.connected)return;
