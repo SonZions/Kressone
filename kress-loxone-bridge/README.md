@@ -184,3 +184,92 @@ other productive services run on the VPS; container restart is tested separately
 
 MIT, consistent with the original repository. Protocol references remain subject
 to their respective licenses. No Home Assistant or ioBroker runtime is required.
+
+## Version 2.1: party mode, schedules, feedback and maintenance
+
+Protocol 0 party mode uses a minimal `sc` write: on `{m:2,distm:0}`, off
+`{m:1,distm:0}`. This protocol is also used by
+[ioBroker.worx](https://github.com/iobroker-community-adapters/ioBroker.worx/blob/master/main.js)
+(`sendPartyModus`). No cached day/slot data is sent back to the mower. Enabling
+party mode pauses the automatic schedule; it is not a stop or home command.
+Disabling it resumes normal scheduling, which can cause scheduled mowing.
+No automatic midnight reset is implemented by this bridge.
+
+All command topics below accept a **non-retained pulse** `1`, `true` or `ON`.
+A `0` payload is ignored, not interpreted as party-off. They require
+`ENABLE_COMMANDS=true`, connected Cloud MQTT and fresh mower telemetry. Party
+writes additionally require fresh protocol-0 `m`/`distm` fields. Unsupported or
+stale data never results in a guessed write. `refresh` remains usable when
+telemetry is stale. The existing command rate limits apply to aliases together.
+
+| Topic | Action |
+|---|---|
+| `kress/cmd/party_on` | Pause automatic mowing indefinitely |
+| `kress/cmd/party_off` | Resume the existing schedule |
+| `kress/cmd/schedule_pause` | Alias of party_on |
+| `kress/cmd/schedule_resume` | Alias of party_off |
+| `kress/cmd/blade_reset` | Record current total blade minutes as the local replacement baseline |
+
+`blade_reset` changes only `/state/maintenance.json`, atomically and mode 600.
+It does not reset manufacturer statistics, move the mower or change its schedule.
+The baseline is bound to the selected mower. No replacement date is guessed on
+first installation: `blade_counter_initialized=0` and elapsed fields are empty
+until an explicit reset. A device counter lower than the baseline invalidates the
+elapsed value and requires a new baseline. There is no invented manufacturer
+replacement interval. Back up maintenance.json together with state; do not reset
+it during upgrades.
+
+All new status topics use `kress/status/`:
+
+| Suffix | Meaning |
+|---|---|
+| `party_mode`, `schedule_paused` | Reported pause/party state, 0/1; includes timed pauses |
+| `schedule_mode`, `party_remaining_minutes` | Raw protocol-0 m and distm |
+| `schedule_enabled` | Reported scheduling enabled, 0/1 |
+| `party_supported` | Whether compatible m/distm fields have been observed; freshness is separate |
+| `features_updated_at`, `features_fresh` | Timestamp and freshness of mode/timer fields |
+| `schedule`, `schedule_text` | JSON and text weekly schedule, Sunday first, both daily slots preserved |
+| `schedule_updated_at`, `schedule_fresh` | Separate freshness for weekly slot data |
+| `blade_counter_initialized` | 1 only for a valid replacement baseline and counter |
+| `blade_since_change_minutes`, `blade_since_change_hours`, `blade_changed_at` | Local maintenance values |
+| `command_result` | Last command outcome JSON with name, ID where applicable, state and timestamp |
+| `command_pending`, `command_failed` | Pending confirmation / last dispatched cloud command failed |
+| `data_stale`, `telemetry_age_seconds` | Missing or expired mower telemetry / seconds since last data (-1 unknown) |
+| `alert_active`, `alert_code`, `alert_text`, `alert_changed_at` | Current alert for Loxone notification logic |
+| `summary_code` | Numeric combined state for a Loxone status monitor |
+
+Configuration-only replies never refresh mower telemetry. Missing optional fields
+are not converted to zero. Retained values can remain historical: gate all values
+with `bridge_online`, heartbeat age (<45 seconds), `mower_online`, and the relevant
+feature/schedule freshness. Freshness/pending/failure/alert flags are non-retained
+10-second heartbeats. Loxone must also detect a missing heartbeat and the retained
+bridge LWT: the bridge cannot send an alert after losing power or the broker.
+
+`command_result.state`: `sent` means published, `acknowledged` means a matching
+request ID was received, and `confirmed` requires correlated receipt plus the
+requested reported state within 60 seconds. This is software readback, not a
+mechanical observation. Other outcomes are `rejected` (reason included), `failed`,
+`timeout`, `unknown` (bridge restarted), and `local_completed` (maintenance reset).
+Results are also emitted non-retained on `kress/event/command`. One cloud command
+may await confirmation at a time; explicit stop/home can supersede it. No timeout
+or reconnect retries a command. A mower which does not echo IDs may execute a
+request but still produce a confirmation timeout; no false success is invented.
+
+Alerts prioritize authentication failure, Cloud MQTT disconnected for 60 seconds,
+stale telemetry, command failure and current mower errors. Historical errors do
+not become current alarms. `kress/event/alert` emits non-retained transitions
+(including recovery and initial state); notifications to people must be wired in
+Loxone and are not sent automatically by this container. `command_failed` clears
+when a new cloud command is dispatched. Invalid/retained/duplicate/oversized
+messages are ignored; valid pulses rejected as offline, stale or busy get a result.
+
+`summary_code` mapping: 1 idle, 2 docked, 3 starting/leaving, 4 mowing, 5 returning,
+6 navigating, 7 edge cutting, 8 lifted, 9 blocked, 10 diagnostic/remote control;
+90 stale/no data, 91 Cloud MQTT disconnected, 92 current mower error,
+93 command unconfirmed/failed, 94 authentication blocked, 99 unknown mower status.
+This is **not** the manufacturer's `status_code`. In particular idle is **1** here.
+
+Weekly schedule editing is deliberately not exposed: the requested display and
+pause/resume preserve all existing slots. Actual mower writes and maintenance
+reset were tested with mocks; no physical live command was sent during the
+November upgrade because the mower had no fresh telemetry.

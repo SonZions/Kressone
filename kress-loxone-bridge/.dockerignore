@@ -10,3 +10,6 @@
 !test/
 !test/**
 !eslint.config.js
+
+# Exclude macOS archive metadata even inside allowlisted directories.
+**/._*
