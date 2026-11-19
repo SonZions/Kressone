@@ -1,6 +1,6 @@
 > Aktueller Stand vom 19.11.2026: Bridge **2.1.1**, Anwendungscode `65ba161`,
-> ist auf dem VPS aktiv. Der nachträglich beauftragte Loxone-Umbau ist noch nicht
-> eingespielt. Native VM-Prüfung und offene Grenzen:
+> ist auf dem VPS aktiv. Die neue Kress-Seite ist im Miniserver aktiv.
+> Konfiguration, Live-Abgleich und Wiederherstellung der App-Dateien:
 > [Prüfbericht](LOXONE-VALIDATION-2026-11-19.md).
 > Der folgende Bericht dokumentiert die ursprüngliche Installation.
 
