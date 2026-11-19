@@ -1,3 +1,9 @@
+> Aktueller Stand vom 19.11.2026: Bridge **2.1.1**, Anwendungscode `65ba161`,
+> ist auf dem VPS aktiv. Der nachträglich beauftragte Loxone-Umbau ist noch nicht
+> eingespielt. Native VM-Prüfung und offene Grenzen:
+> [Prüfbericht](LOXONE-VALIDATION-2026-11-19.md).
+> Der folgende Bericht dokumentiert die ursprüngliche Installation.
+
 # Kressone – Reparatur und Live-Nachweise
 
 Stand: 11. Oktober 2026, Europe/Berlin. Modell live über Produktkatalog erkannt:
